@@ -8,17 +8,20 @@ homepage = "https://github.com/max-niederman/ttyper"
 license = "MIT"
 authors = ["Max Niederman <max@maxniederman.com>"]
 edition = "2021"
-
 [dependencies]
 clap = { version = "^4.5", features = ["derive"] }
 clap_complete = "^4.5"
 dirs = "^5.0"
-crossterm = "^0.27"
+crossterm = "^0.29"
 rust-embed = "^8.2"
 toml = "^0.8"
+tuirealm = { version = "3.3.0", features = ["crossterm", "derive"] }
+eyre = "0.6.12"
+thiserror = "2.0.18"
+tui-realm-stdlib = { version = "3.1.0", features = ["crossterm"] }
 
 [dependencies.ratatui]
-version = "^0.25"
+version = "^0.29"
 
 [dependencies.rand]
 version = "^0.8"
