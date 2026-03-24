@@ -1,247 +1,31 @@
+mod cli;
+mod components;
 mod config;
-mod test;
-mod ui;
+mod error;
+mod messages;
+mod model;
+mod resources;
+mod types;
 
-use config::Config;
-use test::{results::Results, Test};
-
-use clap::{CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Shell};
-use crossterm::{
-    self, cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
-    execute, terminal,
-};
-use rand::{seq::SliceRandom, thread_rng};
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    terminal::Terminal,
-};
-use rust_embed::RustEmbed;
-use std::{
-    ffi::OsString,
-    fs,
-    io::{self, BufRead},
-    num,
-    path::PathBuf,
-    str,
+use clap::CommandFactory;
+use clap::Parser;
+use clap_complete::generate;
+use std::io;
+use std::time::Duration;
+use tuirealm::{
+    event::NoUserEvent, terminal::TerminalBridge, Application, EventListenerCfg, PollStrategy,
+    Update,
 };
 
-#[derive(RustEmbed)]
-#[folder = "resources/runtime"]
-struct Resources;
+use cli::{Command, Opt};
+use components::test::TestComponent;
+use error::TtyperError;
+use messages::Msg;
+use model::{Id, Model};
+use types::Test;
 
-#[derive(Debug, Parser)]
-#[command(about, version)]
-struct Opt {
-    /// Read test contents from the specified file, or "-" for stdin
-    #[arg(value_name = "PATH")]
-    contents: Option<PathBuf>,
-
-    #[arg(short, long)]
-    debug: bool,
-
-    /// Specify word count
-    #[arg(short, long, value_name = "N", default_value = "50")]
-    words: num::NonZeroUsize,
-
-    /// Use config file
-    #[arg(short, long, value_name = "PATH")]
-    config: Option<PathBuf>,
-
-    /// Specify test language in file
-    #[arg(long, value_name = "PATH")]
-    language_file: Option<PathBuf>,
-
-    /// Specify test language
-    #[arg(short, long, value_name = "LANG")]
-    language: Option<String>,
-
-    /// List installed languages
-    #[arg(long)]
-    list_languages: bool,
-
-    /// Disable backtracking to completed words
-    #[arg(long)]
-    no_backtrack: bool,
-
-    /// Enable sudden death mode to restart on first error
-    #[arg(long)]
-    sudden_death: bool,
-
-    /// Disable backspace
-    #[arg(long)]
-    no_backspace: bool,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Generate shell completions
-    Completions {
-        /// Shell to generate completions for
-        shell: Shell,
-    },
-}
-
-impl Opt {
-    fn gen_contents(&self) -> Option<Vec<String>> {
-        match &self.contents {
-            Some(path) => {
-                let lines: Vec<String> = if path.as_os_str() == "-" {
-                    std::io::stdin()
-                        .lock()
-                        .lines()
-                        .map_while(Result::ok)
-                        .collect()
-                } else {
-                    let file = fs::File::open(path).expect("Error reading language file.");
-                    io::BufReader::new(file)
-                        .lines()
-                        .map_while(Result::ok)
-                        .collect()
-                };
-
-                Some(lines.iter().map(String::from).collect())
-            }
-            None => {
-                let lang_name = self
-                    .language
-                    .clone()
-                    .unwrap_or_else(|| self.config().default_language);
-
-                let bytes: Vec<u8> = self
-                    .language_file
-                    .as_ref()
-                    .map(fs::read)
-                    .and_then(Result::ok)
-                    .or_else(|| fs::read(self.language_dir().join(&lang_name)).ok())
-                    .or_else(|| {
-                        Resources::get(&format!("language/{}", &lang_name))
-                            .map(|f| f.data.into_owned())
-                    })?;
-
-                let mut rng = thread_rng();
-
-                let mut language: Vec<&str> = str::from_utf8(&bytes)
-                    .expect("Language file had non-utf8 encoding.")
-                    .lines()
-                    .collect();
-                language.shuffle(&mut rng);
-
-                let mut contents: Vec<_> = language
-                    .into_iter()
-                    .cycle()
-                    .take(self.words.get())
-                    .map(ToOwned::to_owned)
-                    .collect();
-                contents.shuffle(&mut rng);
-
-                Some(contents)
-            }
-        }
-    }
-
-    /// Configuration
-    fn config(&self) -> Config {
-        fs::read(
-            self.config
-                .clone()
-                .unwrap_or_else(|| self.config_dir().join("config.toml")),
-        )
-        .map(|bytes| {
-            toml::from_str(str::from_utf8(&bytes).unwrap_or_default())
-                .expect("Configuration was ill-formed.")
-        })
-        .unwrap_or_default()
-    }
-
-    /// Installed languages under config directory
-    fn languages(&self) -> io::Result<impl Iterator<Item = OsString>> {
-        let builtin = Resources::iter().filter_map(|name| {
-            name.strip_prefix("language/")
-                .map(ToOwned::to_owned)
-                .map(OsString::from)
-        });
-
-        let configured = self
-            .language_dir()
-            .read_dir()
-            .into_iter()
-            .flatten()
-            .map_while(Result::ok)
-            .map(|e| e.file_name());
-
-        Ok(builtin.chain(configured))
-    }
-
-    /// Config directory
-    fn config_dir(&self) -> PathBuf {
-        dirs::config_dir()
-            .expect("Failed to find config directory.")
-            .join("ttyper")
-    }
-
-    /// Language directory under config directory
-    fn language_dir(&self) -> PathBuf {
-        self.config_dir().join("language")
-    }
-}
-
-enum State {
-    Test(Test),
-    Results(Results),
-}
-
-impl State {
-    fn render_into<B: ratatui::backend::Backend>(
-        &self,
-        terminal: &mut Terminal<B>,
-        config: &Config,
-    ) -> io::Result<()> {
-        match self {
-            State::Test(test) => {
-                terminal.draw(|f| {
-                    let area = f.size();
-                    f.render_widget(config.theme.apply_to(test), area);
-
-                    // Position cursor at end of input for IME composition support
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Length(3), Constraint::Length(6)])
-                        .split(area);
-                    let inner_x = chunks[0].x + 1;
-                    let inner_y = chunks[0].y + 1;
-                    let progress_width =
-                        ratatui::text::Line::from(test.words[test.current_word].progress.as_str())
-                            .width() as u16;
-                    let max_cursor_x = chunks[0].right().saturating_sub(2);
-                    f.set_cursor((inner_x + progress_width).min(max_cursor_x), inner_y);
-                })?;
-            }
-            State::Results(results) => {
-                terminal.draw(|f| {
-                    f.render_widget(config.theme.apply_to(results), f.size());
-                })?;
-            }
-        }
-        Ok(())
-    }
-}
-
-fn main() -> io::Result<()> {
+fn main() -> eyre::Result<()> {
     let opt = Opt::parse();
-    if opt.debug {
-        dbg!(&opt);
-    }
-
-    let config = opt.config();
-    if opt.debug {
-        dbg!(&config);
-    }
 
     if let Some(Command::Completions { shell }) = opt.command {
         generate(shell, &mut Opt::command(), "ttyper", &mut io::stdout());
@@ -249,181 +33,89 @@ fn main() -> io::Result<()> {
     }
 
     if opt.list_languages {
-        opt.languages()
-            .unwrap()
-            .for_each(|name| println!("{}", name.to_str().expect("Ill-formatted language name.")));
+        opt.languages().map_err(TtyperError::Io)?.for_each(|name| {
+            if let Some(s) = name.to_str() {
+                println!("{}", s);
+            }
+        });
 
         return Ok(());
     }
 
-    let backend = CrosstermBackend::new(io::stdout());
-    let mut terminal = Terminal::new(backend)?;
-    let contents = opt
-        .gen_contents()
-        .expect("Couldn't get test contents. Make sure the specified language actually exists.");
+    let config = opt.config();
+    let contents = opt.gen_contents().ok_or_else(|| {
+        TtyperError::Content(
+            "Couldn't get test contents. Make sure the specified language actually exists.".into(),
+        )
+    })?;
 
     if contents.is_empty() {
-        eprintln!("Error: the provided file or language contains no words to type.");
-        eprintln!("If you specified a file, make sure it isn't empty.");
-        std::process::exit(1);
+        return Err(eyre::eyre!("Error: the provided file or language contains no words to type. If you specified a file, make sure it isn't empty."));
     }
 
-    terminal::enable_raw_mode()?;
-    execute!(
-        io::stdout(),
-        cursor::Hide,
-        cursor::SavePosition,
-        terminal::EnterAlternateScreen,
-    )?;
-    terminal.clear()?;
+    let mut terminal_bridge =
+        TerminalBridge::init_crossterm().map_err(|e| TtyperError::Terminal(e.to_string()))?;
 
-    let mut state = State::Test(Test::new(
-        contents,
-        !opt.no_backtrack,
-        opt.sudden_death,
-        !opt.no_backspace,
-    ));
+    let mut app: Application<Id, Msg, NoUserEvent> = Application::init(
+        EventListenerCfg::<NoUserEvent>::default()
+            .crossterm_input_listener(Duration::from_millis(20), 1)
+            .poll_timeout(Duration::from_millis(10))
+            .tick_interval(Duration::from_secs(1)),
+    );
 
-    state.render_into(&mut terminal, &config)?;
-    loop {
-        let event = event::read()?;
+    app.mount(
+        Id::Test,
+        Box::new(TestComponent {
+            test: Test::new(
+                contents,
+                !opt.no_backtrack,
+                opt.sudden_death,
+                !opt.no_backspace,
+            ),
+            theme: config.theme.clone(),
+        }),
+        vec![],
+    )
+    .map_err(|e| TtyperError::Application(e.to_string()))?;
 
-        // handle exit controls
-        match event {
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
-                kind: KeyEventKind::Press,
-                modifiers: KeyModifiers::CONTROL,
-                ..
-            }) => break,
-            Event::Key(KeyEvent {
-                code: KeyCode::Esc,
-                kind: KeyEventKind::Press,
-                modifiers: KeyModifiers::NONE,
-                ..
-            }) => match state {
-                State::Test(ref test) => {
-                    state = State::Results(Results::from(test));
-                }
-                State::Results(_) => break,
-            },
-            _ => {}
-        }
+    // Enable focus
+    app.active(&Id::Test)
+        .map_err(|e| TtyperError::Application(e.to_string()))?;
 
-        match state {
-            State::Test(ref mut test) => {
-                if let Event::Key(key) = event {
-                    test.handle_key(key);
-                    if test.complete {
-                        state = State::Results(Results::from(&*test));
+    let mut model = Model::new(app, terminal_bridge, config, opt);
+
+    // Terminal initialization (Alternate screen, Raw mode) is already handled by
+    let _ = model.terminal.clear_screen();
+
+    while !model.quit {
+        // Tick
+        match model.app.tick(PollStrategy::Once) {
+            Err(err) => {
+                let _ = model.terminal.restore();
+                return Err(TtyperError::Application(err.to_string()).into());
+            }
+            Ok(messages) => {
+                if !messages.is_empty() {
+                    model.redraw = true;
+                    for msg in messages.into_iter() {
+                        let mut msg = Some(msg);
+                        while msg.is_some() {
+                            msg = model.update(msg);
+                        }
                     }
                 }
             }
-            State::Results(ref result) => match event {
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('r'),
-                    kind: KeyEventKind::Press,
-                    modifiers: KeyModifiers::NONE,
-                    ..
-                }) => {
-                    let new_contents = opt.gen_contents().expect(
-                        "Couldn't get test contents. Make sure the specified language actually exists.",
-                    );
-                    if new_contents.is_empty() {
-                        continue;
-                    }
-                    state = State::Test(Test::new(
-                        new_contents,
-                        !opt.no_backtrack,
-                        opt.sudden_death,
-                        !opt.no_backspace,
-                    ));
-                }
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('p'),
-                    kind: KeyEventKind::Press,
-                    modifiers: KeyModifiers::NONE,
-                    ..
-                }) => {
-                    if result.missed_words.is_empty() {
-                        continue;
-                    }
-                    // repeat each missed word 5 times
-                    let mut practice_words: Vec<String> = (result.missed_words)
-                        .iter()
-                        .flat_map(|w| vec![w.clone(); 5])
-                        .collect();
-                    practice_words.shuffle(&mut thread_rng());
-                    state = State::Test(Test::new(
-                        practice_words,
-                        !opt.no_backtrack,
-                        opt.sudden_death,
-                        !opt.no_backspace,
-                    ));
-                }
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    kind: KeyEventKind::Press,
-                    modifiers: KeyModifiers::NONE,
-                    ..
-                }) => break,
-                _ => {}
-            },
         }
 
-        state.render_into(&mut terminal, &config)?;
+        // Redraw
+        if model.redraw {
+            model.view()?;
+            model.redraw = false;
+        }
     }
 
-    terminal::disable_raw_mode()?;
-    execute!(
-        io::stdout(),
-        cursor::RestorePosition,
-        cursor::Show,
-        terminal::LeaveAlternateScreen,
-    )?;
+    // Restore terminal
+    let _ = model.terminal.restore();
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-
-    fn make_opt(path: PathBuf) -> Opt {
-        Opt {
-            contents: Some(path),
-            debug: false,
-            words: num::NonZeroUsize::new(50).unwrap(),
-            config: None,
-            language_file: None,
-            language: None,
-            list_languages: false,
-            no_backtrack: false,
-            sudden_death: false,
-            no_backspace: false,
-            command: None,
-        }
-    }
-
-    #[test]
-    fn gen_contents_empty_file_returns_empty_vec() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("empty.txt");
-        fs::File::create(&path).unwrap();
-
-        let contents = make_opt(path).gen_contents().unwrap();
-        assert!(contents.is_empty(), "empty file should produce empty vec");
-    }
-
-    #[test]
-    fn gen_contents_nonempty_file_returns_words() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("words.txt");
-        let mut f = fs::File::create(&path).unwrap();
-        writeln!(f, "hello world rust").unwrap();
-
-        let contents = make_opt(path).gen_contents().unwrap();
-        assert!(!contents.is_empty(), "non-empty file should produce words");
-    }
 }
