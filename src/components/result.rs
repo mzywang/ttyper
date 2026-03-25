@@ -1,7 +1,5 @@
 use rand::{seq::SliceRandom, thread_rng};
-use tuirealm::ratatui::crossterm::event::{
-    KeyCode as CrosstermKeyCode, KeyModifiers as CrosstermKeyModifiers,
-};
+use tuirealm::ratatui::crossterm::event::KeyCode as CrosstermKeyCode;
 use tuirealm::ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     symbols::Marker,
@@ -11,7 +9,6 @@ use tuirealm::ratatui::{
 use tuirealm::{
     command::{Cmd, CmdResult},
     event::{Event, Key, KeyModifiers, NoUserEvent},
-    props::{Alignment, Borders as TuiBorders, Color, Style},
     AttrValue, Attribute, Component, Frame, MockComponent, State,
 };
 

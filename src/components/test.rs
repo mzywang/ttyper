@@ -1,13 +1,11 @@
 use tuirealm::ratatui::{
-    buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Widget},
 };
 use tuirealm::{
     command::{Cmd, CmdResult},
-    event::{Event, Key, KeyModifiers as TuiKeyModifiers, NoUserEvent},
-    props::{Alignment, Borders as TuiBorders, Color, Style},
+    event::{Event, NoUserEvent},
     AttrValue, Attribute, Component, Frame, MockComponent, State,
 };
 
@@ -166,13 +164,16 @@ fn convert_tuirealm_to_crossterm_key(
     };
 
     let mut modifiers = KeyModifiers::empty();
-    if key.modifiers.contains(TuiKeyModifiers::SHIFT) {
+    if key.modifiers.contains(tuirealm::event::KeyModifiers::SHIFT) {
         modifiers.insert(KeyModifiers::SHIFT);
     }
-    if key.modifiers.contains(TuiKeyModifiers::CONTROL) {
+    if key
+        .modifiers
+        .contains(tuirealm::event::KeyModifiers::CONTROL)
+    {
         modifiers.insert(KeyModifiers::CONTROL);
     }
-    if key.modifiers.contains(TuiKeyModifiers::ALT) {
+    if key.modifiers.contains(tuirealm::event::KeyModifiers::ALT) {
         modifiers.insert(KeyModifiers::ALT);
     }
 

@@ -32,12 +32,12 @@ fn list_languages(opt: &Opt) -> eyre::Result<()> {
         }
     });
 
-    return Ok(());
+    Ok(())
 }
 
 fn generate_completions(shell: Shell) -> eyre::Result<()> {
     generate(shell, &mut Opt::command(), "ttyper", &mut io::stdout());
-    return Ok(());
+    Ok(())
 }
 
 fn make_test(opt: &Opt) -> eyre::Result<Vec<String>> {

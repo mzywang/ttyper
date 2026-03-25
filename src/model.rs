@@ -47,9 +47,9 @@ impl Model {
                 // Render the active view
                 // We assume only one view is active at a time (Test or Results)
                 if self.app.active(&Id::Test).is_ok() {
-                    let _ = self.app.view(&Id::Test, f, chunks[0]);
+                    self.app.view(&Id::Test, f, chunks[0]);
                 } else if self.app.active(&Id::Results).is_ok() {
-                    let _ = self.app.view(&Id::Results, f, chunks[0]);
+                    self.app.view(&Id::Results, f, chunks[0]);
                 }
             })
             .map_err(|e| crate::error::TtyperError::Terminal(e.to_string()))?;

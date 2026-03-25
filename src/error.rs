@@ -11,9 +11,6 @@ pub enum TtyperError {
     #[error("Application error: {0}")]
     Application(String),
 
-    #[error("Configuration error: {0}")]
-    Config(String),
-
     #[error("Content error: {0}")]
     Content(String),
 }

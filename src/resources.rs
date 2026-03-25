@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::error::{Result, TtyperError};
 use crate::types::Opt;
 use rand::{seq::SliceRandom, thread_rng};
 use rust_embed::RustEmbed;
