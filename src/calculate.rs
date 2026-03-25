@@ -1,4 +1,4 @@
-fn calc_timing(events: &[&TestEvent]) -> TimingData {
+fn timing(events: &[&TestEvent]) -> TimingData {
     let mut timing = TimingData {
         overall_cps: -1.0,
         per_event: Vec::new(),
@@ -37,7 +37,7 @@ fn calc_timing(events: &[&TestEvent]) -> TimingData {
     timing
 }
 
-fn calc_accuracy(events: &[&TestEvent]) -> AccuracyData {
+fn accuracy(events: &[&TestEvent]) -> AccuracyData {
     let mut acc = AccuracyData {
         overall: Fraction::new(0, 0),
         per_key: HashMap::new(),
@@ -64,7 +64,7 @@ fn calc_accuracy(events: &[&TestEvent]) -> AccuracyData {
     acc
 }
 
-fn calc_missed_words(test: &Test) -> Vec<String> {
+fn missed_words(test: &Test) -> Vec<String> {
     test.words
         .iter()
         .filter(|word| word.events.iter().any(is_missed_word_event))
