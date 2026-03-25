@@ -1,9 +1,11 @@
+mod calculate;
 mod components;
 mod config;
 mod error;
 mod messages;
 mod model;
 mod resources;
+mod types;
 
 use clap::CommandFactory;
 use clap::Parser;
@@ -16,14 +18,14 @@ use tuirealm::{
     Update,
 };
 
-use cli::{Command, Opt};
-use components::test::TestComponent;
-use error::TtyperError;
-use messages::Msg;
-use model::{Id, Model};
-use types::Test;
+use crate::components::test::TestComponent;
+use crate::config::Config;
+use crate::error::TtyperError;
+use crate::messages::Msg;
+use crate::model::Model;
+use crate::types::{Command, Id, Opt, Test};
 
-fn list_languages() -> eyre::Result<()> {
+fn list_languages(opt: &Opt) -> eyre::Result<()> {
     opt.languages().map_err(TtyperError::Io)?.for_each(|name| {
         if let Some(s) = name.to_str() {
             println!("{}", s);
@@ -38,7 +40,7 @@ fn generate_completions(shell: Shell) -> eyre::Result<()> {
     return Ok(());
 }
 
-fn make_test(opt) -> eyre::Result<()> {
+fn make_test(opt: &Opt) -> eyre::Result<Vec<String>> {
     let contents = opt.gen_contents().ok_or_else(|| {
         TtyperError::Content(
             "Couldn't get test contents. Make sure the specified language actually exists.".into(),
@@ -48,6 +50,8 @@ fn make_test(opt) -> eyre::Result<()> {
     if contents.is_empty() {
         return Err(eyre::eyre!("Error: the provided file or language contains no words to type. If you specified a file, make sure it isn't empty."));
     }
+
+    Ok(contents)
 }
 
 fn main() -> eyre::Result<()> {
@@ -59,20 +63,29 @@ fn main() -> eyre::Result<()> {
     }
 
     if options.list_languages {
-        list_languages();
+        list_languages(&options)?;
     }
 
-    let contents = make_test(options);
+    let contents = make_test(&options)?;
 
-    let (app, terminal_bridge) = setup_ttyper(contents, options);
+    let (app, terminal_bridge) = setup_ttyper(contents, &options, &config)?;
 
-    let mut model = Model::new(app, terminal_bridge, config, options);
+    let model = Model::new(app, terminal_bridge, config, options);
+
+    event_loop(model)?;
 
     Ok(())
 }
 
-fn setup_ttyper(contents, options) -> (app, bridge) {
-        let mut terminal_bridge =
+fn setup_ttyper(
+    contents: Vec<String>,
+    options: &Opt,
+    config: &Config,
+) -> eyre::Result<(
+    Application<Id, Msg, NoUserEvent>,
+    TerminalBridge<tuirealm::terminal::CrosstermTerminalAdapter>,
+)> {
+    let terminal_bridge =
         TerminalBridge::init_crossterm().map_err(|e| TtyperError::Terminal(e.to_string()))?;
 
     let mut app: Application<Id, Msg, NoUserEvent> = Application::init(
@@ -101,11 +114,11 @@ fn setup_ttyper(contents, options) -> (app, bridge) {
     app.active(&Id::Test)
         .map_err(|e| TtyperError::Application(e.to_string()))?;
 
+    Ok((app, terminal_bridge))
 }
 
-
-fn event_loop(model: Model) -> eyre::Result<()> {
-        // Terminal initialization (Alternate screen, Raw mode) is already handled by
+fn event_loop(mut model: Model) -> eyre::Result<()> {
+    // Terminal initialization (Alternate screen, Raw mode) is already handled by
     let _ = model.terminal.clear_screen();
 
     while !model.quit {
@@ -138,4 +151,5 @@ fn event_loop(model: Model) -> eyre::Result<()> {
     // Restore terminal
     let _ = model.terminal.restore();
 
+    Ok(())
 }

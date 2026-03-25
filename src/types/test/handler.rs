@@ -1,3 +1,8 @@
+use super::Test;
+use crate::types::{TestEvent, TestWord};
+use std::time::Instant;
+use tuirealm::ratatui::crossterm::event::{KeyEvent, KeyCode, KeyModifiers, KeyEventKind};
+
 impl Test {
     pub fn handle_key(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {

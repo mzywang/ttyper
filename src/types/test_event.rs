@@ -1,3 +1,7 @@
+use std::time::Instant;
+use tuirealm::ratatui::crossterm::event::KeyEvent;
+use std::fmt;
+
 pub struct TestEvent {
     pub time: Instant,
     pub key: KeyEvent,

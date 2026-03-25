@@ -1,6 +1,6 @@
-use crate::cli::Opt;
 use crate::config::Config;
 use crate::error::{Result, TtyperError};
+use crate::types::Opt;
 use rand::{seq::SliceRandom, thread_rng};
 use rust_embed::RustEmbed;
 use std::ffi::OsString;
@@ -54,7 +54,7 @@ impl Opt {
                 let mut language: Vec<&str> = str::from_utf8(&bytes).ok()?.lines().collect();
                 language.shuffle(&mut rng);
 
-                let mut contents: Vec<_> = language
+                let mut contents: Vec<String> = language
                     .into_iter()
                     .cycle()
                     .take(self.words.get())
@@ -76,7 +76,8 @@ impl Opt {
 
         fs::read(config_path)
             .map(|bytes| {
-                toml::from_str(str::from_utf8(&bytes).unwrap_or_default()).unwrap_or_default()
+                toml::from_str::<Config>(str::from_utf8(&bytes).unwrap_or_default())
+                    .unwrap_or_default()
             })
             .unwrap_or_default()
     }
@@ -95,7 +96,7 @@ impl Opt {
             .into_iter()
             .flatten()
             .map_while(std::result::Result::ok)
-            .map(|e| e.file_name());
+            .map(|e: fs::DirEntry| e.file_name());
 
         Ok(builtin.chain(configured))
     }

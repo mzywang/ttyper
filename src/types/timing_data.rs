@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use tuirealm::ratatui::crossterm::event::KeyEvent;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TimingData {
     // Instead of storing WPM, we store CPS (clicks per second)

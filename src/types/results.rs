@@ -1,3 +1,6 @@
+use crate::calculate;
+use crate::types::{AccuracyData, Test, TestEvent, TimingData};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Results {
     pub timing: TimingData,
@@ -10,9 +13,9 @@ impl From<&Test> for Results {
         let events: Vec<&TestEvent> = test.words.iter().flat_map(|w| w.events.iter()).collect();
 
         Self {
-            timing: calc_timing(&events),
-            accuracy: calc_accuracy(&events),
-            missed_words: calc_missed_words(test),
+            timing: calculate::timing(&events),
+            accuracy: calculate::accuracy(&events),
+            missed_words: calculate::missed_words(test),
         }
     }
 }

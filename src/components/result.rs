@@ -134,7 +134,7 @@ impl MockComponent for ResultsComponent {
             .per_event
             .windows(WPM_SMA_WIDTH)
             .enumerate()
-            .map(|(i, window)| {
+            .map(|(i, window): (usize, &[f64])| {
                 (
                     (i + WPM_SMA_WIDTH) as f64,
                     window.len() as f64 / window.iter().copied().sum::<f64>() * WPM_PER_CPS,
@@ -147,11 +147,11 @@ impl MockComponent for ResultsComponent {
             let wpm_sma_min = wpm_sma
                 .iter()
                 .map(|(_, x)| x)
-                .fold(f64::INFINITY, |a, &b| a.min(b));
+                .fold(f64::INFINITY, |a: f64, &b: &f64| a.min(b));
             let wpm_sma_max = wpm_sma
                 .iter()
                 .map(|(_, x)| x)
-                .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                .fold(f64::NEG_INFINITY, |a: f64, &b: &f64| a.max(b));
 
             let wpm_datasets = vec![Dataset::default()
                 .name("WPM")
@@ -225,7 +225,7 @@ impl Component<Msg, NoUserEvent> for ResultsComponent {
                 // repeat each missed word 5 times
                 let mut practice_words: Vec<String> = (self.results.missed_words)
                     .iter()
-                    .flat_map(|w| vec![w.clone(); 5])
+                    .flat_map(|w: &String| vec![w.clone(); 5])
                     .collect();
 
                 practice_words.shuffle(&mut thread_rng());

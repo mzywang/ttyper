@@ -1,4 +1,9 @@
-fn timing(events: &[&TestEvent]) -> TimingData {
+use std::collections::HashMap;
+use tuirealm::ratatui::crossterm::event::{KeyEvent};
+use crate::types::{TestEvent, TimingData, AccuracyData, Fraction, Test};
+use crate::types::test_event::is_missed_word_event;
+
+pub fn timing(events: &[&TestEvent]) -> TimingData {
     let mut timing = TimingData {
         overall_cps: -1.0,
         per_event: Vec::new(),
@@ -37,7 +42,7 @@ fn timing(events: &[&TestEvent]) -> TimingData {
     timing
 }
 
-fn accuracy(events: &[&TestEvent]) -> AccuracyData {
+pub fn accuracy(events: &[&TestEvent]) -> AccuracyData {
     let mut acc = AccuracyData {
         overall: Fraction::new(0, 0),
         per_key: HashMap::new(),
@@ -55,7 +60,7 @@ fn accuracy(events: &[&TestEvent]) -> AccuracyData {
             acc.overall.denominator += 1;
             key.denominator += 1;
 
-            if event.correct.unwrap() {
+            if event.correct.unwrap_or(false) {
                 acc.overall.numerator += 1;
                 key.numerator += 1;
             }
@@ -64,7 +69,7 @@ fn accuracy(events: &[&TestEvent]) -> AccuracyData {
     acc
 }
 
-fn missed_words(test: &Test) -> Vec<String> {
+pub fn missed_words(test: &Test) -> Vec<String> {
     test.words
         .iter()
         .filter(|word| word.events.iter().any(is_missed_word_event))

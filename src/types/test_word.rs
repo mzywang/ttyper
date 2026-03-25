@@ -1,3 +1,5 @@
+use crate::types::TestEvent;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TestWord {
     pub text: String,

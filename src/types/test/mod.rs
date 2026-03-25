@@ -1,4 +1,5 @@
 pub mod handler;
+use crate::types::TestWord;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Test {

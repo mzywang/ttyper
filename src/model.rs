@@ -2,19 +2,12 @@ use tuirealm::ratatui::layout::{Constraint, Direction, Layout};
 use tuirealm::terminal::CrosstermTerminalAdapter;
 use tuirealm::{event::NoUserEvent, terminal::TerminalBridge, Application, Update};
 
-use crate::cli::Opt;
 use crate::components::result::ResultsComponent;
 use crate::components::test::TestComponent;
 use crate::config::Config;
 use crate::error::Result;
 use crate::messages::Msg;
-use crate::types::Test;
-
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
-pub enum Id {
-    Test,
-    Results,
-}
+use crate::types::{Id, Opt, Test};
 
 pub struct Model {
     pub app: Application<Id, Msg, NoUserEvent>,
@@ -54,9 +47,9 @@ impl Model {
                 // Render the active view
                 // We assume only one view is active at a time (Test or Results)
                 if self.app.active(&Id::Test).is_ok() {
-                    self.app.view(&Id::Test, f, chunks[0]);
+                    let _ = self.app.view(&Id::Test, f, chunks[0]);
                 } else if self.app.active(&Id::Results).is_ok() {
-                    self.app.view(&Id::Results, f, chunks[0]);
+                    let _ = self.app.view(&Id::Results, f, chunks[0]);
                 }
             })
             .map_err(|e| crate::error::TtyperError::Terminal(e.to_string()))?;
