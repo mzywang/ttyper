@@ -29,7 +29,7 @@ impl Opt {
                         .collect()
                 };
 
-                Some(lines.iter().map(String::from).collect())
+                Some(lines)
             }
             None => {
                 let lang_name = self
