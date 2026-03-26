@@ -1199,7 +1199,6 @@ version = "1.6.0"
 dependencies = [
  "clap",
  "clap_complete",
- "crossterm 0.29.0",
  "dirs",
  "eyre",
  "rand",
