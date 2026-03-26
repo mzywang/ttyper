@@ -1,3 +1,4 @@
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use tuirealm::ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     text::{Line, Span},
@@ -112,6 +113,19 @@ impl Component<Msg, NoUserEvent> for TestComponent {
             Event::Keyboard(key_event) => {
                 // Convert tuirealm KeyEvent to crossterm KeyEvent for Test::handle_key
                 let crossterm_key = convert_tuirealm_to_crossterm_key(key_event);
+
+                // Respect the Ctrl-C signal
+                if crossterm_key.modifiers == KeyModifiers::CONTROL
+                    && crossterm_key.code == KeyCode::Char('c')
+                {
+                    return Some(Msg::AppClose);
+                }
+
+                if crossterm_key.code == KeyCode::Esc {
+                    let results = Results::from(&self.test);
+
+                    return Some(Msg::ShowResults(results));
+                }
 
                 self.test.handle_key(crossterm_key);
                 if self.test.complete {
