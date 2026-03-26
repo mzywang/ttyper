@@ -1,7 +1,7 @@
 use super::Test;
 use crate::types::{TestEvent, TestWord};
 use std::time::Instant;
-use tuirealm::ratatui::crossterm::event::{KeyEvent, KeyCode, KeyModifiers, KeyEventKind};
+use tuirealm::ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 impl Test {
     pub fn handle_key(&mut self, key: KeyEvent) {

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use tuirealm::ratatui::crossterm::event::{KeyEvent};
-use crate::types::{TestEvent, TimingData, AccuracyData, Fraction, Test};
 use crate::types::test_event::is_missed_word_event;
+use crate::types::{AccuracyData, Fraction, Test, TestEvent, TimingData};
+use std::collections::HashMap;
+use tuirealm::ratatui::crossterm::event::KeyEvent;
 
 pub fn timing(events: &[&TestEvent]) -> TimingData {
     let mut timing = TimingData {
