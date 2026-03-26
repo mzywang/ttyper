@@ -149,7 +149,7 @@ impl MockComponent for ResultsComponent {
             .collect();
 
         // Render the chart if possible.
-        if words_per_minute_sliding_moving_average.is_empty() {
+        if !words_per_minute_sliding_moving_average.is_empty() {
             let minimum_average = words_per_minute_sliding_moving_average
                 .iter()
                 .map(|(_, x)| x)
