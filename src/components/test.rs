@@ -135,6 +135,8 @@ impl Component<Msg, NoUserEvent> for TestComponent {
                     Some(Msg::None)
                 }
             }
+            // Simply signal that we need a redraw
+            Event::WindowResize(_, _) => Some(Msg::None),
             _ => None,
         }
     }
