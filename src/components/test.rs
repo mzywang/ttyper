@@ -1,4 +1,7 @@
-use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+use tuirealm::event::Key;
+use tuirealm::ratatui::crossterm::event::{
+    KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers,
+};
 use tuirealm::ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     text::{Line, Span},
@@ -145,11 +148,6 @@ impl Component<Msg, NoUserEvent> for TestComponent {
 fn convert_tuirealm_to_crossterm_key(
     key: tuirealm::event::KeyEvent,
 ) -> tuirealm::ratatui::crossterm::event::KeyEvent {
-    use tuirealm::event::Key;
-    use tuirealm::ratatui::crossterm::event::{
-        KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers,
-    };
-
     let code = match key.code {
         Key::Backspace => KeyCode::Backspace,
         Key::Enter => KeyCode::Enter,
