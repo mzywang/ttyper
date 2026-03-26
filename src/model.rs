@@ -47,9 +47,9 @@ impl Model {
 
                 // Render the active view
                 // We assume only one view is active at a time (Test or Results)
-                if self.app.active(&Id::Test).is_ok() {
+                if self.app.mounted(&Id::Test) {
                     self.app.view(&Id::Test, f, chunks[0]);
-                } else if self.app.active(&Id::Results).is_ok() {
+                } else if self.app.mounted(&Id::Results) {
                     self.app.view(&Id::Results, f, chunks[0]);
                 }
             })
