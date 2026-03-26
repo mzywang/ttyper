@@ -1,5 +1,5 @@
+use crate::cli::Opt;
 use crate::config::Config;
-use crate::types::Opt;
 use rand::{seq::SliceRandom, thread_rng};
 use rust_embed::RustEmbed;
 use std::ffi::OsString;

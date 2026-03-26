@@ -1,3 +1,10 @@
+use tuirealm::ratatui::crossterm::event::{KeyCode, KeyModifiers};
+use tuirealm::{Component, Event, NoUserEvent};
+
+use super::{convert_tuirealm_to_crossterm_key, TestComponent};
+use crate::components::result::Results;
+use crate::messages::Msg;
+
 impl Component<Msg, NoUserEvent> for TestComponent {
     fn on(&mut self, ev: Event<NoUserEvent>) -> Option<Msg> {
         match ev {

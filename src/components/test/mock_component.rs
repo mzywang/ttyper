@@ -1,3 +1,14 @@
+use tuirealm::ratatui::layout::{Constraint, Direction, Layout, Rect};
+use tuirealm::ratatui::text::{Line, Span};
+use tuirealm::ratatui::widgets::{Block, Borders, Paragraph, Widget};
+use tuirealm::{
+    command::{Cmd, CmdResult},
+    AttrValue, Attribute, Frame, MockComponent, State,
+};
+
+use super::spans::words_to_spans;
+use super::TestComponent;
+
 impl MockComponent for TestComponent {
     fn view(&mut self, frame: &mut Frame, area: Rect) {
         let buf = frame.buffer_mut();

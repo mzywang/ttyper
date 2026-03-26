@@ -1,4 +1,4 @@
-use crate::types::TestEvent;
+use super::event::TestEvent;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TestWord {

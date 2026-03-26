@@ -1,5 +1,6 @@
+use super::event::TestEvent;
+use super::word::TestWord;
 use super::Test;
-use crate::types::{TestEvent, TestWord};
 use std::time::Instant;
 use tuirealm::ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 

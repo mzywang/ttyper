@@ -1,6 +1,9 @@
-// Helpers
+use super::status::{split_current_word, split_typed_word, word_parts_to_spans, Status};
+use super::word::TestWord;
+use crate::config::Theme;
+use tuirealm::ratatui::text::Span;
 
-fn words_to_spans<'a>(
+pub fn words_to_spans<'a>(
     words: &'a [TestWord],
     current_word: usize,
     theme: &'a Theme,
@@ -21,25 +24,5 @@ fn words_to_spans<'a>(
             spans.push(word_parts_to_spans(parts, theme));
         }
     }
-    spans
-}
-
-fn word_parts_to_spans(parts: Vec<(String, Status)>, theme: &Theme) -> Vec<Span<'_>> {
-    let mut spans = Vec::new();
-    for (text, status) in parts {
-        let style = match status {
-            Status::Correct => theme.prompt_correct,
-            Status::Incorrect => theme.prompt_incorrect,
-            Status::Untyped => theme.prompt_untyped,
-            Status::CurrentUntyped => theme.prompt_current_untyped,
-            Status::CurrentCorrect => theme.prompt_current_correct,
-            Status::CurrentIncorrect => theme.prompt_current_incorrect,
-            Status::Cursor => theme.prompt_current_untyped.patch(theme.prompt_cursor),
-            Status::Overtyped => theme.prompt_incorrect,
-        };
-
-        spans.push(Span::styled(text, style));
-    }
-    spans.push(Span::styled(" ", theme.prompt_untyped));
     spans
 }

@@ -2,22 +2,18 @@ use tuirealm::event::Key;
 use tuirealm::ratatui::crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers,
 };
-use tuirealm::ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
-};
-use tuirealm::{
-    command::{Cmd, CmdResult},
-    event::{Event, NoUserEvent},
-    AttrValue, Attribute, Component, Frame, MockComponent, State,
-};
 
 use crate::config::Theme;
-use crate::messages::Msg;
-use crate::types::{Results, Test, TestWord};
 
+pub mod component;
+pub mod event;
 pub mod handler;
+pub mod mock_component;
+pub mod spans;
+pub mod status;
+pub mod word;
+
+pub use word::TestWord;
 
 pub struct TestComponent {
     pub test: Test,

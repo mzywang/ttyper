@@ -1,5 +1,8 @@
-use crate::types::test_event::is_missed_word_event;
-use crate::types::{AccuracyData, Fraction, Test, TestEvent, TimingData};
+use crate::components::result::accuracy::Data as AccuracyData;
+use crate::components::result::fraction::Fraction;
+use crate::components::result::timing::Data as TimingData;
+use crate::components::test::event::{is_missed_word_event, TestEvent};
+use crate::components::test::Test;
 use std::collections::HashMap;
 use tuirealm::ratatui::crossterm::event::KeyEvent;
 

@@ -2,12 +2,13 @@ use tuirealm::ratatui::layout::{Constraint, Direction, Layout};
 use tuirealm::terminal::CrosstermTerminalAdapter;
 use tuirealm::{event::NoUserEvent, terminal::TerminalBridge, Application, Update};
 
+use crate::cli::Opt;
 use crate::components::result::ResultsComponent;
-use crate::components::test::TestComponent;
+use crate::components::test::{Test, TestComponent};
+use crate::components::Screen as Id;
 use crate::config::Config;
 use crate::error::Result;
 use crate::messages::Msg;
-use crate::types::{Id, Opt, Test};
 
 pub struct Model {
     pub app: Application<Id, Msg, NoUserEvent>,

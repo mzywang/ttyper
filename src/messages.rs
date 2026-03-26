@@ -1,4 +1,4 @@
-use crate::types::Results;
+use crate::components::result::Results;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Msg {
