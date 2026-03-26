@@ -1,5 +1,5 @@
 use rand::{seq::SliceRandom, thread_rng};
-use tuirealm::ratatui::crossterm::event::KeyCode as CrosstermKeyCode;
+use tuirealm::ratatui::crossterm::event::{KeyCode as CrosstermKeyCode, KeyEvent};
 use tuirealm::ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     symbols::Marker,
@@ -17,10 +17,10 @@ use crate::messages::Msg;
 use crate::types::{Fraction, Results};
 
 // Convert CPS to WPM (clicks per second)
-const WPM_PER_CPS: f64 = 12.0;
+const WORDS_PER_MINUTE_PER_CPS: f64 = 12.0;
 
 // Width of the moving average window for the WPM chart
-const WPM_SMA_WIDTH: usize = 10;
+const WORDS_PER_MINUTE_MOVING_AVERAGE_WIDTH: usize = 10;
 
 pub struct ResultsComponent {
     pub results: Results,
@@ -29,25 +29,29 @@ pub struct ResultsComponent {
 
 impl MockComponent for ResultsComponent {
     fn view(&mut self, frame: &mut Frame, area: Rect) {
-        let buf = frame.buffer_mut();
+        let buffer = frame.buffer_mut();
 
-        buf.set_style(area, self.theme.default);
+        buffer.set_style(area, self.theme.default);
 
         // Chunks
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(1), Constraint::Length(1)])
             .split(area);
-        let res_chunks = Layout::default()
+
+        let result_chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1) // Graph looks tremendously better with just a little margin
             .constraints([Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)])
             .split(chunks[0]);
+
         let info_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
-            .split(res_chunks[0]);
+            .split(result_chunks[0]);
 
+        // Handling the incomplete tests
+        // TODO: Show a better screen here
         let msg = if self.results.missed_words.is_empty() {
             "Press 'q' to quit or 'r' for another test"
         } else {
@@ -55,7 +59,7 @@ impl MockComponent for ResultsComponent {
         };
 
         let exit = Span::styled(msg, self.theme.results_restart_prompt);
-        buf.set_span(chunks[1].x, chunks[1].y, &exit, chunks[1].width);
+        buffer.set_span(chunks[1].x, chunks[1].y, &exit, chunks[1].width);
 
         // Sections
         let mut overview_text = Text::styled("", self.theme.results_overview);
@@ -63,7 +67,7 @@ impl MockComponent for ResultsComponent {
             Line::from(format!(
                 "Adjusted WPM: {:.1}",
                 self.results.timing.overall_cps
-                    * WPM_PER_CPS
+                    * WORDS_PER_MINUTE_PER_CPS
                     * f64::from(self.results.accuracy.overall)
             )),
             Line::from(format!(
@@ -72,7 +76,7 @@ impl MockComponent for ResultsComponent {
             )),
             Line::from(format!(
                 "Raw WPM: {:.1}",
-                self.results.timing.overall_cps * WPM_PER_CPS
+                self.results.timing.overall_cps * WORDS_PER_MINUTE_PER_CPS
             )),
             Line::from(format!(
                 "Correct Keypresses: {}",
@@ -86,15 +90,17 @@ impl MockComponent for ResultsComponent {
                 .border_type(self.theme.border_type)
                 .border_style(self.theme.results_overview_border),
         );
-        overview.render(info_chunks[0], buf);
+        overview.render(info_chunks[0], buffer);
 
-        let mut worst_keys: Vec<(&tuirealm::ratatui::crossterm::event::KeyEvent, &Fraction)> = self
+        let mut worst_keys: Vec<(&KeyEvent, &Fraction)> = self
             .results
             .accuracy
             .per_key
             .iter()
             .filter(|(key, _)| matches!(key.code, CrosstermKeyCode::Char(_)))
             .collect();
+
+        // Unstable because we don't care about order, just results
         worst_keys.sort_unstable_by_key(|x| x.1);
 
         let mut worst_text = Text::styled("", self.theme.results_worst_keys);
@@ -116,6 +122,7 @@ impl MockComponent for ResultsComponent {
                 .take(5)
                 .map(Line::from),
         );
+
         let worst = Paragraph::new(worst_text).block(
             Block::default()
                 .title(Span::styled("Worst Keys", self.theme.title))
@@ -123,29 +130,32 @@ impl MockComponent for ResultsComponent {
                 .border_type(self.theme.border_type)
                 .border_style(self.theme.results_worst_keys_border),
         );
-        worst.render(info_chunks[1], buf);
 
-        let wpm_sma: Vec<(f64, f64)> = self
+        worst.render(info_chunks[1], buffer);
+
+        let words_per_minute_sliding_moving_average: Vec<(f64, f64)> = self
             .results
             .timing
             .per_event
-            .windows(WPM_SMA_WIDTH)
+            .windows(WORDS_PER_MINUTE_MOVING_AVERAGE_WIDTH)
             .enumerate()
             .map(|(i, window): (usize, &[f64])| {
                 (
-                    (i + WPM_SMA_WIDTH) as f64,
-                    window.len() as f64 / window.iter().copied().sum::<f64>() * WPM_PER_CPS,
+                    (i + WORDS_PER_MINUTE_MOVING_AVERAGE_WIDTH) as f64,
+                    window.len() as f64 / window.iter().copied().sum::<f64>()
+                        * WORDS_PER_MINUTE_PER_CPS,
                 )
             })
             .collect();
 
-        // Render the chart if possible
-        if !wpm_sma.is_empty() {
-            let wpm_sma_min = wpm_sma
+        // Render the chart if possible.
+        if words_per_minute_sliding_moving_average.is_empty() {
+            let minimum_average = words_per_minute_sliding_moving_average
                 .iter()
                 .map(|(_, x)| x)
                 .fold(f64::INFINITY, |a: f64, &b: &f64| a.min(b));
-            let wpm_sma_max = wpm_sma
+
+            let maximum_average = words_per_minute_sliding_moving_average
                 .iter()
                 .map(|(_, x)| x)
                 .fold(f64::NEG_INFINITY, |a: f64, &b: &f64| a.max(b));
@@ -155,10 +165,10 @@ impl MockComponent for ResultsComponent {
                 .marker(Marker::Braille)
                 .graph_type(GraphType::Line)
                 .style(self.theme.results_chart)
-                .data(&wpm_sma)];
+                .data(&words_per_minute_sliding_moving_average)];
 
-            let y_label_min = wpm_sma_min as u16;
-            let y_label_max = (wpm_sma_max as u16).max(y_label_min + 6);
+            let y_label_minimum = minimum_average as u16;
+            let y_label_maximum = (maximum_average as u16).max(y_label_minimum + 6);
 
             let wpm_chart = Chart::new(wpm_datasets)
                 .block(Block::default().title(vec![Span::styled("Chart", self.theme.title)]))
@@ -173,18 +183,19 @@ impl MockComponent for ResultsComponent {
                             "WPM (10-keypress rolling average)",
                             self.theme.results_chart_y,
                         ))
-                        .bounds([wpm_sma_min, wpm_sma_max])
+                        .bounds([minimum_average, maximum_average])
                         .labels(
-                            (y_label_min..y_label_max)
+                            (y_label_minimum..y_label_maximum)
                                 .step_by(5)
                                 .map(|n| Span::raw(format!("{}", n)))
                                 .collect::<Vec<_>>(),
                         ),
                 );
-            wpm_chart.render(res_chunks[1], buf);
+            wpm_chart.render(result_chunks[1], buffer);
         }
     }
 
+    // DEFAULT IMPLEMENTATIONS ROUGHLY
     fn query(&self, _attr: Attribute) -> Option<AttrValue> {
         None
     }
@@ -208,11 +219,13 @@ impl Component<Msg, NoUserEvent> for ResultsComponent {
             {
                 Some(Msg::AppClose)
             }
+
             Event::Keyboard(key)
                 if key.code == Key::Char('r') && key.modifiers == KeyModifiers::NONE =>
             {
                 Some(Msg::RestartTest)
             }
+
             Event::Keyboard(key)
                 if key.code == Key::Char('p') && key.modifiers == KeyModifiers::NONE =>
             {
