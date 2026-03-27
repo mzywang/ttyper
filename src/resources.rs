@@ -102,7 +102,7 @@ impl Opt {
 
     /// Config directory
     pub fn config_dir(&self) -> PathBuf {
-        dirs::config_dir()
+        dir_spec::config_home()
             .map(|d| d.join("ttyper"))
             .unwrap_or_else(|| PathBuf::from("."))
     }
