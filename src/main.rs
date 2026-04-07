@@ -55,7 +55,8 @@ fn make_test(opt: &Opt) -> eyre::Result<Vec<String>> {
     Ok(contents)
 }
 
-fn main() -> eyre::Result<()> {
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
     let options = Opt::parse();
     let config = options.config();
 
@@ -93,9 +94,10 @@ fn setup_ttyper(
 
     let mut app: Application<Id, Msg, NoUserEvent> = Application::init(
         EventListenerCfg::<NoUserEvent>::default()
-            .crossterm_input_listener(Duration::from_millis(20), 1)
-            .poll_timeout(Duration::from_millis(10))
-            .tick_interval(Duration::from_secs(1)),
+            .with_handle(tokio::runtime::Handle::current())
+            .async_crossterm_input_listener(Duration::from_millis(0), 1)
+            .tick_interval(Duration::from_secs(1))
+            .async_tick(true),
     );
 
     app.mount(
@@ -126,7 +128,7 @@ fn event_loop(mut model: Model) -> eyre::Result<()> {
 
     while !model.quit {
         // Tick
-        match model.app.tick(PollStrategy::Once) {
+        match model.app.tick(PollStrategy::BlockCollectUpTo(10)) {
             Err(err) => {
                 let _ = model.terminal.restore();
                 return Err(TtyperError::Application(err.to_string()).into());
