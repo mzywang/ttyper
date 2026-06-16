@@ -74,6 +74,9 @@ struct Opt {
     #[arg(long)]
     no_backspace: bool,
 
+    #[arg(long)]
+    punctuation: Option<bool>,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -88,6 +91,28 @@ enum Command {
 }
 
 impl Opt {
+    fn apply_punctuation(
+        words: Vec<String>,
+        enabled: bool,
+        rng: &mut impl rand::Rng,
+    ) -> Vec<String> {
+        if !enabled {
+            return words;
+        }
+        const PUNCT: &[char] = &['!', '?'];
+        words
+            .into_iter()
+            .map(|mut word| {
+                if rng.gen_bool(0.3) {
+                    if let Some(&p) = PUNCT.choose(rng) {
+                        word.push(p)
+                    }
+                }
+                word
+            })
+            .collect()
+    }
+
     fn gen_contents(&self) -> Option<Vec<String>> {
         match &self.contents {
             Some(path) => {
@@ -124,6 +149,10 @@ impl Opt {
                             .map(|f| f.data.into_owned())
                     })?;
 
+                let punctuation = self
+                    .punctuation
+                    .unwrap_or_else(|| self.config().default_punctuation);
+
                 let mut rng = thread_rng();
 
                 let mut language: Vec<&str> = str::from_utf8(&bytes)
@@ -138,6 +167,7 @@ impl Opt {
                     .take(self.words.get())
                     .map(ToOwned::to_owned)
                     .collect();
+                contents = Self::apply_punctuation(contents, punctuation, &mut rng);
                 contents.shuffle(&mut rng);
 
                 Some(contents)
@@ -402,6 +432,7 @@ mod tests {
             no_backtrack: false,
             sudden_death: false,
             no_backspace: false,
+            punctuation: None,
             command: None,
         }
     }

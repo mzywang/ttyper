@@ -11,6 +11,7 @@ use serde::{
 #[serde(default)]
 pub struct Config {
     pub default_language: String,
+    pub default_punctuation: bool,
     pub theme: Theme,
 }
 
@@ -18,6 +19,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             default_language: "english200".into(),
+            default_punctuation: false,
             theme: Theme::default(),
         }
     }
