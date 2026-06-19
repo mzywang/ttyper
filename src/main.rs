@@ -28,6 +28,40 @@ use std::{
     str,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PunctuationPlacement {
+    Prefix,
+    Suffix,
+    Alone,
+    Wrap { close: char },
+    InBetween,
+}
+#[derive(Debug, Clone, Copy)]
+struct PunctuationRule {
+    ch: char,
+    placement: PunctuationPlacement,
+}
+const PUNCTUATION_RULES: &[PunctuationRule] = &[
+    PunctuationRule { ch: ',', placement: PunctuationPlacement::Suffix },
+    PunctuationRule { ch: ';', placement: PunctuationPlacement::Suffix },
+    PunctuationRule { ch: '.', placement: PunctuationPlacement::InBetween },
+    PunctuationRule { ch: '?', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '!', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '#', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '+', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '-', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '$', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '%', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '^', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '*', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '|', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '=', placement: PunctuationPlacement::Alone },
+    PunctuationRule { ch: '&', placement: PunctuationPlacement::Prefix },
+    PunctuationRule { ch: '(', placement: PunctuationPlacement::Wrap { close: ')' } },
+    PunctuationRule { ch: '{', placement: PunctuationPlacement::Wrap { close: '}' } },
+    PunctuationRule { ch: '[', placement: PunctuationPlacement::Wrap { close: ']' } },
+    PunctuationRule { ch: '"', placement: PunctuationPlacement::Wrap { close: '"' } },
+];
 #[derive(RustEmbed)]
 #[folder = "resources/runtime"]
 struct Resources;
@@ -99,18 +133,32 @@ impl Opt {
         if !enabled {
             return words;
         }
-        const PUNCT: &[char] = &['!', '?'];
         words
             .into_iter()
-            .map(|mut word| {
+            .map(|word| {
                 if rng.gen_bool(0.3) {
-                    if let Some(&p) = PUNCT.choose(rng) {
-                        word.push(p)
+                    match PUNCTUATION_RULES.choose(rng) {
+                        Some(&rule) => Self::apply_punctuation_to_word(word, rule),
+                        None => word,
                     }
+                } else {
+                    word
                 }
-                word
             })
-            .collect()
+        .collect()
+    }
+
+    fn apply_punctuation_to_word(
+        word: String,
+        rule: PunctuationRule,
+    ) -> String {
+        match rule.placement {
+            PunctuationPlacement::Prefix => format!("{}{}", rule.ch, word),
+            PunctuationPlacement::Suffix => format!("{}{}", word, rule.ch),
+            PunctuationPlacement::Alone => format!("{} {}", word, rule.ch),
+            PunctuationPlacement::Wrap { close } => format!("{}{}{}", rule.ch, word, close),
+            PunctuationPlacement::InBetween => format!("{}{}{}", word, rule.ch, word),
+        }
     }
 
     fn gen_contents(&self) -> Option<Vec<String>> {
